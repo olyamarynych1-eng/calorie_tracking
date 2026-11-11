@@ -86,14 +86,21 @@ const tg = window.Telegram && Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 /* ---------- сховище: Telegram CloudStorage, інакше localStorage ---------- */
+const inTG = !!(tg && tg.initData && tg.CloudStorage);
 const store = {
   get(k, cb){
-    if (tg && tg.CloudStorage) tg.CloudStorage.getItem(k, (e,v)=>cb(e?null:v));
-    else cb(localStorage.getItem(k));
+    let done = false;
+    const fin = v => { if (!done) { done = true; cb(v); } };
+    const local = () => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+    if (inTG) {
+      try { tg.CloudStorage.getItem(k, (e,v)=>fin(e || !v ? local() : v)); }
+      catch(e){ fin(local()); }
+      setTimeout(()=>fin(local()), 2500);   // якщо Telegram не відповів
+    } else fin(local());
   },
   set(k, v){
-    if (tg && tg.CloudStorage) tg.CloudStorage.setItem(k, v);
-    else localStorage.setItem(k, v);
+    try { localStorage.setItem(k, v); } catch(e){}
+    if (inTG) { try { tg.CloudStorage.setItem(k, v); } catch(e){} }
   }
 };
 const pad = n => String(n).padStart(2,"0");
@@ -167,6 +174,7 @@ function load(){
     refresh();
   });
 }
+refresh();
 load();
 setInterval(() => { if (today() !== day) load(); }, 15000);   // перехід через північ
 
