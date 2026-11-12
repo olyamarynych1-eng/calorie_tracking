@@ -83,16 +83,17 @@ const GROUPS = [
 ];
 
 const tg = window.Telegram && Telegram.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+if (tg) { try { tg.ready(); tg.expand(); } catch(e){} }
+const insideTelegram = !!(tg && tg.platform && tg.platform !== "unknown");
+const hasCloud = !!(insideTelegram && tg.initData && tg.CloudStorage);
 
-/* ---------- сховище: Telegram CloudStorage, інакше localStorage ---------- */
-const inTG = !!(tg && tg.initData && tg.CloudStorage);
+/* ---------- сховище: localStorage завжди, CloudStorage додатково всередині Telegram ---------- */
 const store = {
   get(k, cb){
     let done = false;
     const fin = v => { if (!done) { done = true; cb(v); } };
     const local = () => { try { return localStorage.getItem(k); } catch(e){ return null; } };
-    if (inTG) {
+    if (hasCloud) {
       try { tg.CloudStorage.getItem(k, (e,v)=>fin(e || !v ? local() : v)); }
       catch(e){ fin(local()); }
       setTimeout(()=>fin(local()), 2500);   // якщо Telegram не відповів
@@ -100,14 +101,14 @@ const store = {
   },
   set(k, v){
     try { localStorage.setItem(k, v); } catch(e){}
-    if (inTG) { try { tg.CloudStorage.setItem(k, v); } catch(e){} }
+    if (hasCloud) { try { tg.CloudStorage.setItem(k, v); } catch(e){} }
   }
 };
 const pad = n => String(n).padStart(2,"0");
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
 
 /* ---------- модель ---------- */
-const items = [];            // плоский список з посиланнями на DOM
+const items = [];
 let day = today();
 let eaten = {};              // "А|Бобові": грами
 
@@ -194,8 +195,12 @@ function report(){
 }
 document.getElementById("send").addEventListener("click", () => {
   const text = report();
-  if (tg && tg.initData) tg.sendData(JSON.stringify({report: text}));
-  else { navigator.clipboard && navigator.clipboard.writeText(text); alert(text); }
+  if (insideTelegram) {
+    try { tg.sendData(JSON.stringify({report: text})); return; }
+    catch(e){ alert("Не вдалося надіслати: " + e.message + "\n\n" + text); return; }
+  }
+  if (navigator.clipboard) navigator.clipboard.writeText(text);
+  alert("Це не Telegram, звіт скопійовано:\n\n" + text);
 });
 </script>
 </body>
