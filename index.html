@@ -30,6 +30,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .card.full .name{color:var(--mute)}
 textarea{width:100%;min-height:80px;font:inherit;border:1px solid var(--line);border-radius:12px;padding:10px;resize:vertical}
 button{width:100%;margin-top:12px;font:inherit;font-weight:600;color:#fff;background:#3b82f6;border:0;border-radius:12px;padding:14px}
+button.alt{background:#eef1f5;color:#44505f;font-weight:500}
 .hint{color:var(--mute);font-size:14px;text-align:center;margin-top:10px}
 </style>
 </head>
@@ -42,7 +43,8 @@ button{width:100%;margin-top:12px;font:inherit;font-weight:600;color:#fff;backgr
 <div id="list"></div>
 <hr>
 <textarea id="notes" placeholder="Якщо ви спожили щось поза межами програми, вкажіть тут."></textarea>
-<button id="send">Надіслати звіт</button>
+<button id="share">Надіслати звіт (обрати чат / Збережене)</button>
+<button id="send" class="alt">Надіслати боту (потрібен запущений бот)</button>
 <div class="hint" id="date"></div>
 
 <script>
@@ -193,6 +195,13 @@ function report(){
   if (notesEl.value.trim()) t += `\n\nПоза програмою: ${notesEl.value.trim()}`;
   return t;
 }
+document.getElementById("share").addEventListener("click", () => {
+  const text = report();
+  const link = "https://t.me/share/url?url=%20&text=" + encodeURIComponent(text);
+  if (insideTelegram && tg.openTelegramLink) { tg.openTelegramLink(link); return; }
+  if (navigator.clipboard) navigator.clipboard.writeText(text);
+  alert("Це не Telegram, звіт скопійовано:\n\n" + text);
+});
 document.getElementById("send").addEventListener("click", () => {
   const text = report();
   if (insideTelegram) {
